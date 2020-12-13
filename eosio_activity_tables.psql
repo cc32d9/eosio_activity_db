@@ -1,0 +1,107 @@
+use eosio_activity;
+
+
+CREATE TABLE %%_CONTRACTS
+ (
+ contract          VARCHAR(13) NOT NULL,
+ istoken           TINYINT NOT NULL
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_CONTRACTS_I01 ON %%_CONTRACTS (contract);
+CREATE INDEX %%_CONTRACTS_I02 ON %%_CONTRACTS (istoken, contract);
+
+
+CREATE TABLE %%_DAILY_COUNTS
+ (
+ xday              DATE NOT NULL,
+ contract          VARCHAR(13) NOT NULL,
+ authorizer        VARCHAR(13) NOT NULL,
+ firstauth         TINYINT NULL,    
+ action            VARCHAR(13) NOT NULL,
+ counter           BIGINT NOT NULL
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_DAILY_COUNTS_I01 ON %%_DAILY_COUNTS (xday, contract, authorizer, action, firstauth);
+
+
+CREATE TABLE %%_DAILY_ACTIONS
+ (
+ xday              DATE NOT NULL,
+ contract          VARCHAR(13) NOT NULL,
+ action            VARCHAR(13) NOT NULL,
+ counter           BIGINT NOT NULL
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_DAILY_ACTIONS_I01 ON %%_DAILY_ACTIONS (xday, contract, action);
+
+
+CREATE TABLE %%_DAILY_PAYIN
+ (
+ xday              DATE NOT NULL,
+ contract          VARCHAR(13) NOT NULL,
+ tkcontract        VARCHAR(13) NOT NULL,
+ currency          VARCHAR(8) NOT NULL,
+ user              VARCHAR(13) NOT NULL,
+ amount            DOUBLE PRECISION NOT NULL,
+ counter           BIGINT NOT NULL 
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_DAILY_PAYIN_I01 ON %%_DAILY_PAYIN (xday, contract, tkcontract, currency, user);
+
+
+CREATE TABLE %%_DAILY_PAYOUT
+ (
+ xday              DATE NOT NULL,
+ contract          VARCHAR(13) NOT NULL,
+ tkcontract        VARCHAR(13) NOT NULL,
+ currency          VARCHAR(8) NOT NULL,
+ user              VARCHAR(13) NOT NULL,
+ amount            DOUBLE PRECISION NOT NULL,
+ counter           BIGINT NOT NULL 
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_DAILY_PAYOUT_I01 ON %%_DAILY_PAYOUT (xday, contract, tkcontract, currency, user);
+
+
+
+CREATE TABLE %%_AGGR_COUNTS
+ (
+ xday              DATE NOT NULL,
+ contract          VARCHAR(13) NOT NULL,
+ action            VARCHAR(13) NOT NULL,
+ firstauth         TINYINT NULL,
+ numusers          BIGINT NOT NULL,
+ counter           BIGINT NOT NULL
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_AGGR_COUNTS_I01 ON %%_AGGR_COUNTS (xday, contract, action, firstauth);
+
+
+CREATE TABLE %%_AGGR_PAYIN
+ (
+ xday              DATE NOT NULL,
+ contract          VARCHAR(13) NOT NULL,
+ tkcontract        VARCHAR(13) NOT NULL,
+ currency          VARCHAR(8) NOT NULL,
+ numusers          BIGINT NOT NULL,
+ amount            DOUBLE PRECISION NOT NULL,
+ counter           BIGINT NOT NULL 
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_AGGR_PAYIN_I01 ON %%_AGGR_PAYIN (xday, contract, tkcontract, currency);
+
+
+CREATE TABLE %%_AGGR_PAYOUT
+ (
+ xday              DATE NOT NULL,
+ contract          VARCHAR(13) NOT NULL,
+ tkcontract        VARCHAR(13) NOT NULL,
+ currency          VARCHAR(8) NOT NULL,
+ numusers          BIGINT NOT NULL,
+ amount            DOUBLE PRECISION NOT NULL,
+ counter           BIGINT NOT NULL 
+) ENGINE=InnoDB;
+
+CREATE UNIQUE INDEX %%_AGGR_PAYOUT_I01 ON %%_AGGR_PAYOUT (xday, contract, tkcontract, currency);
+
+
