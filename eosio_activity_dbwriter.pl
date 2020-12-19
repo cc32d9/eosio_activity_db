@@ -70,26 +70,28 @@ my $sth_add_contract = $dbh->prepare
 my $sth_add_counts = $dbh->prepare
     ('INSERT INTO ' . $network . '_DAILY_COUNTS ' .
      '(xday, contract, authorizer, firstauth, action, counter) ' .
-     'VALUES(?,?,?,?,?,1) ' .
-     'ON DUPLICATE KEY UPDATE counter=counter+1');
+     'VALUES(?,?,?,?,?,?) ' .
+     'ON DUPLICATE KEY UPDATE counter=counter+?');
 
 my $sth_add_actions = $dbh->prepare
     ('INSERT INTO ' . $network . '_DAILY_ACTIONS ' .
      '(xday, contract, action, counter) ' .
-     'VALUES(?,?,?,1) ' .
-     'ON DUPLICATE KEY UPDATE counter=counter+1');
+     'VALUES(?,?,?,?) ' .
+     'ON DUPLICATE KEY UPDATE counter=counter+?');
 
-my $sth_add_payin = $dbh->prepare
+my %sth_add_pay;
+
+$sth_add_pay{'in'} = $dbh->prepare
     ('INSERT INTO ' . $network . '_DAILY_PAYIN ' .
      '(xday, contract, tkcontract, currency, user, amount, counter) ' .
-     'VALUES(?,?,?,?,?,?,1) ' .
-     'ON DUPLICATE KEY UPDATE amount=amount+?, counter=counter+1');
+     'VALUES(?,?,?,?,?,?,?) ' .
+     'ON DUPLICATE KEY UPDATE amount=amount+?, counter=counter+?');
 
-my $sth_add_payout = $dbh->prepare
+$sth_add_pay{'out'} = $dbh->prepare
     ('INSERT INTO ' . $network . '_DAILY_PAYOUT ' .
      '(xday, contract, tkcontract, currency, user, amount, counter) ' .
-     'VALUES(?,?,?,?,?,?,1) ' .
-     'ON DUPLICATE KEY UPDATE amount=amount+?, counter=counter+1');
+     'VALUES(?,?,?,?,?,?,?) ' .
+     'ON DUPLICATE KEY UPDATE amount=amount+?, counter=counter+?');
 
 
 my $sth_upd_sync = $dbh->prepare
@@ -135,6 +137,10 @@ my $counter_start = time();
 
 my $prev_day;
 
+my %counts;
+my %actions;
+my %paycnt;
+my %payamt;
 
 Net::WebSocket::Server->new(
     listen => $port,
@@ -248,6 +254,70 @@ sub process_data
             
             if( $uncommitted_block > $stored_block )
             {
+                foreach my $block_date (keys %counts)
+                {
+                    foreach my $contract (keys %{$counts{$block_date}})
+                    {
+                        foreach my $actor (keys %{$counts{$block_date}{$contract}})
+                        {
+                            foreach my $firstauth (keys %{$counts{$block_date}{$contract}{$actor}})
+                            {
+                                foreach my $aname (keys %{$counts{$block_date}{$contract}{$actor}{$firstauth}})
+                                {
+                                    my $cnt = $counts{$block_date}{$contract}{$actor}{$firstauth}{$aname};
+                                    $sth_add_counts->execute($block_date, $contract, $actor, $firstauth, $aname,
+                                                             $cnt, $cnt);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                foreach my $block_date (keys %actions)
+                {
+                    foreach my $contract (keys %{$actions{$block_date}})
+                    {
+                        foreach my $aname (keys %{$actions{$block_date}{$contract}})
+                        {
+                            my $cnt = $actions{$block_date}{$contract}{$aname};
+                            $sth_add_actions->execute($block_date, $contract, $aname, $cnt, $cnt);
+                        }
+                    }
+                }
+
+                foreach my $direction (keys %paycnt)
+                {
+                    foreach my $block_date (keys %{$paycnt{$direction}})
+                    {
+                        foreach my $dapp (keys %{$paycnt{$direction}{$block_date}})
+                        {
+                            foreach my $contract (keys %{$paycnt{$direction}{$block_date}{$dapp}})
+                            {
+                                foreach my $currency (keys %{$paycnt{$direction}{$block_date}{$dapp}{$contract}})
+                                {
+                                    foreach my $user
+                                        (keys %{$paycnt{$direction}{$block_date}{$dapp}{$contract}{$currency}})
+                                    {
+                                        my $cnt =
+                                            $paycnt{$direction}{$block_date}{$dapp}{$contract}{$currency}{$user};
+                                        my $amount =
+                                            $payamt{$direction}{$block_date}{$dapp}{$contract}{$currency}{$user};
+                                                                               
+                                        $sth_add_pay{$direction}->execute
+                                            ($block_date, $dapp, $contract,
+                                             $currency, $user, $amount, $cnt, $amount, $cnt);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                %counts = ();
+                %actions = ();
+                %paycnt = ();
+                %payamt = ();
+
                 $sth_upd_sync->execute($network, $uncommitted_block, $uncommitted_block);
                 $dbh->commit();
                 $stored_block = $uncommitted_block;
@@ -321,12 +391,28 @@ sub process_atrace
         my $firstauth = 1;
         foreach my $auth (@{$act->{'authorization'}})
         {
-            $sth_add_counts->execute($block_date, $contract, $auth->{'actor'}, $firstauth, $aname);
+            my $actor = $auth->{'actor'};
+            if( exists $counts{$block_date}{$contract}{$actor}{$firstauth}{$aname} )
+            {
+                $counts{$block_date}{$contract}{$actor}{$firstauth}{$aname}++;
+            }
+            else
+            {
+                $counts{$block_date}{$contract}{$actor}{$firstauth}{$aname} = 1;
+            }
+            
             $firstauth = 0;
         }
 
-        $sth_add_actions->execute($block_date, $contract, $aname);
-        
+        if( exists $actions{$block_date}{$contract}{$aname} )
+        {
+            $actions{$block_date}{$contract}{$aname}++;
+        }
+        else
+        {
+            $actions{$block_date}{$contract}{$aname} = 1;
+        }
+                
         my $thisistoken;
         
         if( $aname eq 'transfer' and 
@@ -339,27 +425,35 @@ sub process_atrace
             {
                 $thisistoken = 1;
                 
-                my $sth;
+                my $direction;
                 my $dapp;
                 my $user;
                 
                 if( $contract_accounts{$data->{'to'}} )
                 {
-                    $sth = $sth_add_payin;
+                    $direction = 'in';
                     $dapp = $data->{'to'};
                     $user = $data->{'from'};
                 }
                 elsif( $contract_accounts{$data->{'from'}} )
                 {
-                    $sth = $sth_add_payout;
+                    $direction = 'out';
                     $dapp = $data->{'from'};
                     $user = $data->{'to'};
                 }
 
-                if( defined($sth) )
+                if( defined($direction) )
                 {
-                    $sth->execute($block_date, $dapp, $contract,
-                                  $currency, $user, $amount, $amount);
+                    if( exists $paycnt{$direction}{$block_date}{$dapp}{$contract}{$currency}{$user} )
+                    {
+                        $paycnt{$direction}{$block_date}{$dapp}{$contract}{$currency}{$user}++;
+                        $payamt{$direction}{$block_date}{$dapp}{$contract}{$currency}{$user} += $amount;
+                    }
+                    else
+                    {
+                        $paycnt{$direction}{$block_date}{$dapp}{$contract}{$currency}{$user} = 1;
+                        $payamt{$direction}{$block_date}{$dapp}{$contract}{$currency}{$user} = $amount;
+                    }
                 }
             }
         }
