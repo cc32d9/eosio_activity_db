@@ -239,8 +239,9 @@ sub process_data
             }
             
             my $period = time() - $counter_start;
-            printf STDERR ("blocks/s: %8.2f, actions/block: %8.2f, gap: %8.2fh, ",
-                           $blocks_counter/$period, $actions_counter/$blocks_counter, $gap);
+            printf STDERR ("blocks/s: %5.2f, actions/block: %5.2f, actions/s: %5.2f, gap: %6.2fh, ",
+                           $blocks_counter/$period, $actions_counter/$blocks_counter, $actions_counter/$period,
+                           $gap);
             $counter_start = time();
             $blocks_counter = 0;
             $actions_counter = 0;
