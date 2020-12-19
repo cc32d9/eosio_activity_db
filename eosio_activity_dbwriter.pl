@@ -191,6 +191,11 @@ sub process_data
 
     if( $msgtype == 1001 ) # CHRONICLE_MSGTYPE_FORK
     {
+        %counts = ();
+        %actions = ();
+        %paycnt = ();
+        %payamt = ();
+        
         my $block_num = $data->{'block_num'};
         print STDERR "fork at $block_num\n";
         $uncommitted_block = 0;
