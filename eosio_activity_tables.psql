@@ -11,6 +11,18 @@ CREATE UNIQUE INDEX %%_CONTRACTS_I01 ON %%_CONTRACTS (contract);
 CREATE INDEX %%_CONTRACTS_I02 ON %%_CONTRACTS (istoken, contract);
 
 
+CREATE TABLE %%_NEWACCOUNT
+ (
+ account          VARCHAR(13) PRIMARY KEY,
+ creator          VARCHAR(13) NOT NULL,
+ block_num        BIGINT NOT NULL,
+ xday             DATE NOT NULL 
+) ENGINE=InnoDB;
+
+CREATE INDEX %%_NEWACCOUNT_I01 ON %%_NEWACCOUNT (creator, xday);
+CREATE INDEX %%_NEWACCOUNT_I02 ON %%_NEWACCOUNT (xday);
+
+
 CREATE TABLE %%_DAILY_COUNTS
  (
  xday              DATE NOT NULL,
@@ -22,6 +34,7 @@ CREATE TABLE %%_DAILY_COUNTS
 ) ENGINE=InnoDB;
 
 CREATE UNIQUE INDEX %%_DAILY_COUNTS_I01 ON %%_DAILY_COUNTS (xday, contract, authorizer, action, firstauth);
+CREATE INDEX %%_DAILY_COUNTS_I02 ON %%_DAILY_COUNTS (authorizer, xday);
 
 
 CREATE TABLE %%_DAILY_ACTIONS

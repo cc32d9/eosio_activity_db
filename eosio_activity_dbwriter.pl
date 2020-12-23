@@ -67,6 +67,11 @@ my $sth_add_contract = $dbh->prepare
      'VALUES(?,?) ' .
      'ON DUPLICATE KEY UPDATE istoken=?');
 
+my $sth_newaccount = $dbh->prepare
+    ('INSERT IGNORE INTO ' . $network . '_NEWACCOUNT ' .
+     '(account, creator, block_num, xday) ' .
+     'VALUES(?,?,?,?)');
+
 my $sth_add_counts = $dbh->prepare
     ('INSERT INTO ' . $network . '_DAILY_COUNTS ' .
      '(xday, contract, authorizer, firstauth, action, counter) ' .
@@ -213,7 +218,7 @@ sub process_data
                 
                 foreach my $atrace (@{$trace->{'action_traces'}})
                 {
-                    process_atrace($atrace, $block_date);
+                    process_atrace($atrace, $block_date, $data->{'block_num'});
                 }
             }
         }
@@ -380,6 +385,7 @@ sub process_atrace
 {
     my $atrace = shift;
     my $block_date = shift;
+    my $block_num = shift;
 
     my $act = $atrace->{'act'};
     my $contract = $act->{'account'};
@@ -461,6 +467,11 @@ sub process_atrace
                     }
                 }
             }
+        }
+        elsif( $contract eq 'eosio' and $aname eq 'newaccount' and
+               defined($data->{'creator'}) and defined($data->{'name'}) )
+        {
+            $sth_newaccount->execute($data->{'name'}, $data->{'creator'}, $block_num, $block_date);
         }
 
         if( not $contract_accounts{$contract} )
