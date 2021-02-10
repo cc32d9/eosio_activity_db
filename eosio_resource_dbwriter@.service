@@ -1,0 +1,26 @@
+# This unit's instance name is the EOSIO network name
+# The instance requires an environment file /etc/default/eosio_resource_%i
+# The mandatory variable DBWRITE_OPTS should include at least
+# the websocket server port for Chronicle export.
+
+
+[Unit]
+Description=eosio_resource DB Writer
+After=mariadb.service
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/default/eosio_resource_%i
+
+ExecStart=/usr/bin/perl /opt/eosio_activity_db/eosio_resource_dbwriter.pl --network=%i $DBWRITE_OPTS
+TimeoutSec=45s
+Restart=always
+User=root
+Group=daemon
+KillMode=control-group
+
+
+[Install]
+WantedBy=multi-user.target
+
+
