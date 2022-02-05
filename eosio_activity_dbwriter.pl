@@ -164,7 +164,7 @@ Net::WebSocket::Server->new(
                 } 
                 
                 my $ack = process_data($msgtype, $data);
-                if( $ack > 0 )
+                if( $ack >= 0 )
                 {
                     $conn->send_binary(sprintf("%d", $ack));
                     print STDERR "ack $ack\n";
@@ -377,7 +377,7 @@ sub process_data
         }
     }
 
-    return 0;
+    return -1;
 }
 
 
