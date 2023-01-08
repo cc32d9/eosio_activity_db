@@ -9,7 +9,8 @@ use eosio_activity;
 CREATE TABLE SYNC
 (
  network           VARCHAR(15) PRIMARY KEY,
- block_num         BIGINT NOT NULL
+ block_num         BIGINT NOT NULL,
+ block_time        DATETIME NOT NULL
 ) ENGINE=InnoDB;
 
 
